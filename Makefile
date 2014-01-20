@@ -1,4 +1,4 @@
-CXXFLAGS+= -std=c++11 -O2 -g -Wall -Wextra
+CXXFLAGS+= -std=c++11 -O2 -g -Wall -Wextra -I../
 CXX=clang++
 %.o:%.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $^ -c
