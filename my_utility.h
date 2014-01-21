@@ -11,60 +11,49 @@
 template <typename>
 struct arg_converter;
 
-template <> struct arg_converter<double> {
-	static constexpr const char *type_name = "double";
-	static double function(const char *nptr, char **endptr) {
-		return strtod(nptr, endptr);
-	}
-};
-template <> struct arg_converter<long double> {
-	static constexpr const char *type_name = "long double";
-	static long double function(const char *nptr, char **endptr) {
-		return strtold(nptr, endptr);
-	}
-};
-template <> struct arg_converter<float> {
-	static constexpr const char *type_name = "float";
-	static float function(const char *nptr, char **endptr) {
-		return strtof(nptr, endptr);
-	}
-};
-template <> struct arg_converter<long> {
-	static constexpr const char *type_name = "long";
-	static long function(const char *nptr, char **endptr) {
-		return strtol(nptr, endptr, 0);
-	}
-};
-template <> struct arg_converter<unsigned long> {
-	static constexpr const char *type_name = "unsigned long";
-	static unsigned long function(const char *nptr, char **endptr) {
-		return strtoul(nptr, endptr, 0);
-	}
-};
-template <> struct arg_converter<long long> {
-	static constexpr const char *type_name = "long long";
-	static long long function(const char *nptr, char **endptr) {
-		return strtoll(nptr, endptr, 0);
-	}
-};
-template <> struct arg_converter<unsigned long long> {
-	static constexpr const char *type_name = "unsigned long long";
-	static unsigned long long function(const char *nptr, char **endptr) {
-		return strtol(nptr, endptr, 0);
-	}
-};
-template <> struct arg_converter<int> {
-	static constexpr const char *type_name = "int";
-	static int function(const char *nptr, char **endptr) {
-		return strtol(nptr, endptr, 0);
-	}
-};
-template <> struct arg_converter<unsigned> {
-	static constexpr const char *type_name = "unsigned int";
-	static unsigned function(const char *nptr, char **endptr) {
-		return strtoul(nptr, endptr, 0);
-	}
-};
+#define DEFINE_FLOAT_CONVERTER(type, func) \
+template <> struct arg_converter<type> { \
+	static constexpr const char *type_name = "floating-point"; \
+	static type function(const char *nptr, char **endptr) { \
+		return func(nptr, endptr); \
+	} \
+}
+
+#define DEFINE_INTEGRAL_CONVERTER(type, func) \
+template <> struct arg_converter<type> { \
+	static constexpr const char *type_name = "integer"; \
+	static type function(const char *nptr, char **endptr) { \
+		return func(nptr, endptr, 0); \
+	} \
+}
+
+#define DEFINE_STRING_CONVERTER(type) \
+template <> struct arg_converter<type> { \
+	static constexpr const char *type_name = "string"; \
+	static type function(const char *nptr, char **endptr) { \
+		static char dummy = '\0'; \
+		*endptr = &dummy; \
+		return nptr; \
+	} \
+}
+
+DEFINE_FLOAT_CONVERTER(double, strtod);
+DEFINE_FLOAT_CONVERTER(float, strtof);
+DEFINE_INTEGRAL_CONVERTER(unsigned, strtoul);
+DEFINE_INTEGRAL_CONVERTER(unsigned long, strtoul);
+DEFINE_INTEGRAL_CONVERTER(unsigned long long, strtoul);
+DEFINE_INTEGRAL_CONVERTER(unsigned short, strtoul);
+DEFINE_INTEGRAL_CONVERTER(int, strtol);
+DEFINE_INTEGRAL_CONVERTER(long, strtol);
+DEFINE_INTEGRAL_CONVERTER(long long, strtoll);
+DEFINE_INTEGRAL_CONVERTER(short, strtol);
+DEFINE_STRING_CONVERTER(string_ref);
+DEFINE_STRING_CONVERTER(std::string);
+DEFINE_STRING_CONVERTER(const char*);
+
+#undef DEFINE_FLOAT_CONVERTER
+#undef DEFINE_INTEGRAL_CONVERTER
+#undef DEFINE_STRING_CONVERTER
 
 template <typename T>
 bool convert(const char* s, T& val) {
