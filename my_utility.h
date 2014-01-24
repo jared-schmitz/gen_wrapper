@@ -92,33 +92,50 @@ private:
 	// types. It will issue (TODO: in a manner to be decided) an error if
 	// conversion fails. Otherwise, the function is invoked.
 	template <typename F, typename... Args>
-	func_type generate_wrapper(F&& f)
+	func_type generate_wrapper(F&& f, std::string usage)
 	{
-		return [f](const command& c) {
-			std::tuple<Args...> args;
+		return [f, usage](const command& c) {
+			// args is a tuple with its args removed of references
+			// and const/volatile
+			using value_tuple = typename
+				tuple_valify<Args...>::type;
+			value_tuple args;
 			constexpr size_t arg_size = sizeof...(Args);
 			if (arg_size != c.args_size()) {
 				fprintf(stderr, "Incorrect arity, expected %zu, got %zu\n", arg_size,
 						c.args_size());
+				if (!usage.empty())
+					fprintf(stderr, "usage: %s\n", usage.data());
 				return;
 			}
-			bool success = Converter<std::tuple<Args...>, 0,
-			     arg_size>::convert_all(c, args);
+			bool success = Converter<value_tuple, 0, arg_size>::convert_all(c, args);
 			// Only call the function if conversion succeeded.
 			if (success)
 				apply(f, args);
+			else if (!usage.empty())
+				fprintf(stderr, "usage: %s\n", usage.data());
 		};
 	}
 	std::unordered_map<std::string, func_type> mappings;
 public:
-	// Maps a command string to a function of arbitrary type. The command 
+	// Maps a command string to a function of arbitrary type.
+	template <class R, class... Args>
+	void add_mapping(const std::string& command,
+			std::function<R(Args...)>&& func, std::string usage) {
+		typedef decltype(func) target_type;
+		mappings.emplace(command,
+				generate_wrapper<target_type,
+				Args...>(std::forward<target_type>(func), usage));
+	}
+
 	template <class R, class... Args>
 	void add_mapping(const std::string& command,
 			std::function<R(Args...)>&& func) {
-		typedef decltype(func) func_type;
+		typedef decltype(func) target_type;
 		mappings.emplace(command,
-				generate_wrapper<func_type,
-				Args...>(std::forward<func_type>(func)));		
+				generate_wrapper<target_type,
+				Args...>(std::forward<target_type>(func), ""));
+
 	}
 
 	void execute_command(const command& c) {
@@ -130,22 +147,4 @@ public:
 		fprintf(stderr, "Executing \"%s\"\n", c.cmd().data());
 		i->second(c);
 	}
-#if 0
-	// FIXME: Args are unfortunately yanked by the converter functions,
-	// which breaks 'one function, one responsibility'. So the below can't
-	// be done.
-	template <std::string... Ss>
-	void execute_explicit_command(const char* command, Ss... args) {
-		std::string s = pop_token();
-		auto i = mappings.find(s);
-		if (i == mappings.end()) {
-			fprintf(stderr, "No command \"%s\"\n", s.c_str());
-			return;
-		}
-		fprintf(stderr, "Executing \"%s\"\n", s.c_str());
-		std::tuple<Args...> args;
-		Converter<std::tuple<Args...>, 0, sizeof...(Args)>::convert_all(args);
-		apply(f, args);
-	}
-#endif
 };
