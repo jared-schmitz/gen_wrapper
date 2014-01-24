@@ -4,9 +4,8 @@
 #include <unordered_map>
 #include <iostream>
 
-#include "apply.h"
 #include "command_buffer.h"
-#include "tuple_valify.h"
+#include "tuple_utils.h"
 
 // TODO: How to better statically dispatch...
 template <typename>
