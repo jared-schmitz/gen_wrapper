@@ -6,6 +6,7 @@
 
 #include "apply.h"
 #include "command_buffer.h"
+#include "tuple_valify.h"
 
 // TODO: How to better statically dispatch...
 template <typename>
@@ -97,8 +98,8 @@ private:
 		return [f, usage](const command& c) {
 			// args is a tuple with its args removed of references
 			// and const/volatile
-			using value_tuple = typename
-				tuple_valify<Args...>::type;
+			using value_tuple = 
+				typename tuple_valify<Args...>::type;
 			value_tuple args;
 			constexpr size_t arg_size = sizeof...(Args);
 			if (arg_size != c.args_size()) {
