@@ -5,38 +5,24 @@
 #include <utility>
 #include <type_traits>
 
-namespace {
-// Expand a tuple whose signature matches the argument signature of F, call F
-// with the tuple's contents, and return the result.
-template <unsigned K, class R, class F, class Tup>
-struct Expander {
-	template <class... Us>
-	static R expand(F&& f, Tup&& t, Us&&... args) {
-		return Expander<K - 1, R, F, Tup>::expand(
-				f,
-				std::forward<Tup>(t),
-				std::get<K - 1>(std::forward<Tup>(t)),
-				std::forward<Us>(args)...);
-	}
-};
-template <class R, class F, class Tup>
-struct Expander<0, R, F, Tup> {
-	template <class... Us>
-	static R expand(F&& f, Tup&&, Us&&... args) {
-		return f(std::forward<Us>(args)...);
-	}
-};
+#include "sequences.h"
+
+// Get tuple_size for references-to-tuple
+template <typename T>
+struct my_tuple_size :
+	std::integral_constant<std::size_t,
+	std::tuple_size<typename std::remove_reference<T>::type>::value> { };
+
+template<typename F, typename Tuple, std::size_t... I>
+auto apply_(F&& f, Tuple&& args, std::index_sequence<I...>) ->
+decltype(std::forward<F>(f)(std::get<I>(std::forward<Tuple>(args))...)) {
+	return std::forward<F>(f)(std::get<I>(std::forward<Tuple>(args))...);
 }
 
-// Helper to use Expander because it's hideous
-template <class F, class... Ts>
-auto apply(F&& f, const std::tuple<Ts...>& t)
-	-> typename std::result_of<F(Ts...)>::type
-{
-	return Expander<sizeof...(Ts), 
-	       typename std::result_of<F(Ts...)>::type,
-	       F,
-	       const std::tuple<Ts...>&>::expand(f, t);
+template<typename F, typename Tuple,
+	typename Indices = std::make_index_sequence<my_tuple_size<Tuple>::value>>
+auto apply(F&& f, Tuple&& args) ->
+decltype(apply_(std::forward<F>(f), std::forward<Tuple>(args), Indices())) {
+	return apply_(std::forward<F>(f), std::forward<Tuple>(args), Indices());
 }
-
 #endif
