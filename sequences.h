@@ -6,6 +6,7 @@ namespace std {
 template <typename T, T... Indices>
 struct integer_sequence {};
 
+// TODO: Write a O(log N) depth version of this
 template <size_t N, typename T, T... Ts>
 struct build_sequence : build_sequence<N-1, T, N - 1, Ts...> {};
 

@@ -3,9 +3,11 @@
 #include <functional>
 #include <unordered_map>
 #include <iostream>
+#include <algorithm>
 
 #include "command_buffer.h"
 #include "tuple_utils.h"
+#include "libcpp-util/cxx14/array_ref.h"
 
 // TODO: How to better statically dispatch...
 template <typename>
@@ -55,6 +57,7 @@ DEFINE_STRING_CONVERTER(const char*);
 #undef DEFINE_INTEGRAL_CONVERTER
 #undef DEFINE_STRING_CONVERTER
 
+namespace {
 template <typename T>
 bool convert(const char* s, T& val) {
 	typedef arg_converter<T> converter;
@@ -69,19 +72,30 @@ bool convert(const char* s, T& val) {
 	}
 }
 
-template <class Tuple, unsigned I, unsigned J>
-struct Converter {
-	static bool convert_all(const command& c, Tuple& Tup) {
-		bool success = convert(c[I].data(), std::get<I>(Tup));
-		success &= Converter<Tuple, I + 1, J>::convert_all(c, Tup);
-		return success;
-	}
-};
+bool convert_args(array_ref<string_ref>) {
+	return true;
+}
 
-template <class Tuple, unsigned I>
-struct Converter<Tuple, I, I> {
-	static bool convert_all(const command&, Tuple&) { return true; }
-};
+// Recurse and convert each argument in turn
+template <typename T, typename... Ts>
+bool convert_args(array_ref<string_ref> command, T& arg, Ts&&... args) {
+	bool success = convert(command.front().data(), arg);
+	command.pop_front();
+	return success && convert_args(command, std::forward<Ts>(args)...);
+}
+template <typename Tuple, std::size_t... I>
+bool convert_all_(array_ref<string_ref> command, Tuple& t,
+		std::index_sequence<I...>) {
+	return convert_args(command, std::get<I>(t)...);
+}
+
+// Splat a tuple of arguments to convert
+template <typename Tuple>
+bool convert_all(array_ref<string_ref> command, Tuple& t) {
+	return convert_all_(command, t,
+			std::make_index_sequence<my_tuple_size<Tuple>::value>());
+}
+}
 
 class function_mapping {
 public:
@@ -108,7 +122,8 @@ private:
 					fprintf(stderr, "usage: %s\n", usage.data());
 				return;
 			}
-			bool success = Converter<value_tuple, 0, arg_size>::convert_all(c, args);
+			array_ref<string_ref> a(&*c.begin(), &*c.end());
+			bool success = convert_all(a, args);
 			// Only call the function if conversion succeeded.
 			if (success)
 				apply(f, args);
