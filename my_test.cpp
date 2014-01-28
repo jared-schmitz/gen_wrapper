@@ -15,10 +15,8 @@ static const char kill_usage[] = "kill player_name";
 
 int main() {
 	function_mapping fm;
-	fm.add_mapping("howdy", std::function<int(int, double)>(piss_off),
-			piss_off_usage);
-	fm.add_mapping("kill", std::function<void(const
-				std::string&)>(kill_player), kill_usage);
+	fm.add_mapping("howdy", piss_off, piss_off_usage);
+	fm.add_mapping("kill", kill_player, kill_usage);
 	buffer.push_command("howdy 5 6.2");
 	buffer.push_command("no_such_command arg1");
 	buffer.push_command("kill jared 5");
