@@ -8,6 +8,7 @@
 #include "command_buffer.h"
 #include "tuple_utils.h"
 #include "libcpp-util/cxx14/array_ref.h"
+#include "libcpp-util/cxx14/string_ref.h"
 
 // TODO: How to better statically dispatch...
 template <typename>
@@ -97,6 +98,7 @@ bool convert_all(array_ref<string_ref> command, Tuple& t) {
 }
 
 bool tokenize(std::string& line, std::vector<string_ref>& args) {
+	// FIXME: This is error-prone, incomplete, and slow.
 	size_t end_of_command = line.find_first_of(" \t;");
 	line[end_of_command] = '\0';
 	size_t end_of_arg = end_of_command;
@@ -143,24 +145,23 @@ private:
 	// types. It will issue (TODO: in a manner to be decided) an error if
 	// conversion fails. Otherwise, the function is invoked.
 	template <typename F, typename... Args>
-	func_type generate_wrapper(F&& f, std::string usage);
+	func_type gen_wrapper(F&& f, std::string usage);
+
 	std::unordered_map<std::string, func_type> mappings;
 public:
 	// Maps a command string to a function of arbitrary type.
 	template <class R, class... Args>
-	void add_mapping(const std::string& command, R (*func)(Args...),
+	void add_mapping(string_ref command, R (*func)(Args...),
 			std::string usage) {
 		typedef decltype(func) target_type;
-		mappings.emplace(command,
-				generate_wrapper<target_type,
+		mappings.emplace(command.str(), gen_wrapper<target_type,
 				Args...>(std::forward<target_type>(func), usage));
 	}
 
 	template <class R, class... Args>
-	void add_mapping(const std::string& command, R (*func)(Args...)) {
+	void add_mapping(string_ref command, R (*func)(Args...)) {
 		typedef decltype(func) target_type;
-		mappings.emplace(command,
-				generate_wrapper<target_type,
+		mappings.emplace(command.str(), gen_wrapper<target_type,
 				Args...>(std::forward<target_type>(func), ""));
 
 	}
@@ -170,8 +171,7 @@ public:
 		c.push_back('\0');
 		size_t end_of_command = c.find_first_of(" \t;");
 
-		auto i = mappings.find(string_ref(c.data(),
-					end_of_command).str());
+		auto i = mappings.find(std::string(c.data(), end_of_command));
 		if (i == mappings.end()) {
 			fprintf(stderr, "No command \"%s\"\n", c.data());
 			return;
@@ -185,8 +185,8 @@ public:
 };
 
 template <typename F, typename... Args>
-function_mapping::func_type
-function_mapping::generate_wrapper(F&& f, std::string usage) {
+inline function_mapping::func_type
+function_mapping::gen_wrapper(F&& f, std::string usage) {
 	return [f, usage](array_ref<string_ref> string_args) {
 		// args is a tuple with Args type-decayed.
 		using value_tuple = typename tuple_valify<Args...>::type;

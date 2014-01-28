@@ -2,9 +2,7 @@
 #define COMMAND_BUFFER_H
 
 #include <string>
-#include <vector>
 #include <deque>
-#include "libcpp-util/cxx14/string_ref.h"
 
 class command_buffer {
 private:
