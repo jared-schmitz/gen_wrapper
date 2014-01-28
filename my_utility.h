@@ -143,30 +143,7 @@ private:
 	// types. It will issue (TODO: in a manner to be decided) an error if
 	// conversion fails. Otherwise, the function is invoked.
 	template <typename F, typename... Args>
-	func_type generate_wrapper(F&& f, std::string usage)
-	{
-		return [f, usage](array_ref<string_ref> string_args) {
-			// args is a tuple with its args removed of references
-			// and const/volatile
-			using value_tuple = 
-				typename tuple_valify<Args...>::type;
-			value_tuple args;
-			constexpr size_t arg_size = sizeof...(Args);
-			if (arg_size != string_args.size()) {
-				fprintf(stderr, "Incorrect arity, expected %zu, got %zu\n", arg_size,
-						string_args.size());
-				if (!usage.empty())
-					fprintf(stderr, "usage: %s\n", usage.data());
-				return;
-			}
-			bool success = convert_all(string_args, args);
-			// Only call the function if conversion succeeded.
-			if (success)
-				apply(f, args);
-			else if (!usage.empty())
-				fprintf(stderr, "usage: %s\n", usage.data());
-		};
-	}
+	func_type generate_wrapper(F&& f, std::string usage);
 	std::unordered_map<std::string, func_type> mappings;
 public:
 	// Maps a command string to a function of arbitrary type.
@@ -206,3 +183,26 @@ public:
 		i->second(string_args);
 	}
 };
+
+template <typename F, typename... Args>
+function_mapping::func_type
+function_mapping::generate_wrapper(F&& f, std::string usage) {
+	return [f, usage](array_ref<string_ref> string_args) {
+		// args is a tuple with Args type-decayed.
+		using value_tuple = typename tuple_valify<Args...>::type;
+		value_tuple args;
+		constexpr size_t arg_size = sizeof...(Args);
+		if (arg_size != string_args.size()) {
+			fprintf(stderr, "Wrong # of args, need %zu, got %zu\n",
+				       	arg_size, string_args.size());
+			if (!usage.empty())
+				fprintf(stderr, "usage: %s\n", usage.data());
+			return;
+		}
+		// Only call the function if conversion succeeded.
+		if (convert_all(string_args, args))
+			apply(f, args);
+		else if (!usage.empty())
+			fprintf(stderr, "usage: %s\n", usage.data());
+	};
+}
