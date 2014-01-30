@@ -8,7 +8,7 @@
 #include "command_buffer.h"
 #include "tuple_utils.h"
 #include "libcpp-util/cxx14/array_ref.h"
-#include "libcpp-util/cxx14/string_ref.h"
+#include "string_ref.h"
 
 // TODO: How to better statically dispatch...
 template <typename>
