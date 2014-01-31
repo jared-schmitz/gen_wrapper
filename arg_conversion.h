@@ -1,3 +1,6 @@
+#ifndef ARG_CONVERSION_H
+#define ARG_CONVERSION_H
+
 #include <stddef.h>
 #include <utility>
 #include <functional>
@@ -8,7 +11,7 @@
 #include "command_buffer.h"
 #include "tuple_utils.h"
 #include "libcpp-util/cxx14/array_ref.h"
-#include "string_ref.h"
+#include "libcpp-util/cxx14/string_ref.h"
 
 // TODO: How to better statically dispatch...
 template <typename>
@@ -206,3 +209,4 @@ function_mapping::gen_wrapper(F&& f, std::string usage) {
 			fprintf(stderr, "usage: %s\n", usage.data());
 	};
 }
+#endif
